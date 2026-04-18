@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet'
+import { useEffect, useState } from 'react'
+import { MapContainer, Marker, Popup, Circle, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { LatestPosition, Geofence, Device } from '@/lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
+import MapLayerControl, { ActiveTileLayer, MapLayer, DEFAULT_LAYERS } from './MapLayerControl'
 
-// Fix default marker icons
 delete (L.Icon.Default.prototype as any)._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -14,9 +14,7 @@ L.Icon.Default.mergeOptions({
 
 function createDeviceIcon(icon: string, color: string, selected: boolean) {
   const size = selected ? 44 : 36
-  const pulse = selected ? `
-    <div style="position:absolute;inset:-8px;border-radius:50%;border:2px solid ${color};opacity:0.4;animation:pulse-ring 2s ease-out infinite;pointer-events:none"></div>
-  ` : ''
+  const pulse = selected ? `<div style="position:absolute;inset:-8px;border-radius:50%;border:2px solid ${color};opacity:0.4;animation:pulse-ring 2s ease-out infinite;pointer-events:none"></div>` : ''
   return L.divIcon({
     className: '',
     iconSize: [size, size],
@@ -25,13 +23,7 @@ function createDeviceIcon(icon: string, color: string, selected: boolean) {
     html: `
       <div style="position:relative;width:${size}px;height:${size}px">
         ${pulse}
-        <div style="
-          width:${size}px;height:${size}px;border-radius:50%;
-          background:${color}20;border:${selected ? 2 : 1.5}px solid ${color};
-          display:flex;align-items:center;justify-content:center;
-          font-size:${selected ? 18 : 14}px;cursor:pointer;
-          box-shadow:0 0 ${selected ? 12 : 6}px ${color}40;
-        ">${icon}</div>
+        <div style="width:${size}px;height:${size}px;border-radius:50%;background:${color}20;border:${selected ? 2 : 1.5}px solid ${color};display:flex;align-items:center;justify-content:center;font-size:${selected ? 18 : 14}px;cursor:pointer;box-shadow:0 0 ${selected ? 12 : 6}px ${color}40;">${icon}</div>
       </div>
     `
   })
@@ -45,6 +37,20 @@ function FlyToDevice({ position }: { position: [number, number] | null }) {
   return null
 }
 
+// Layer control overlay — must be inside MapContainer
+function LayerControlOverlay({ activeLayerId, onLayerChange }: {
+  activeLayerId: string
+  onLayerChange: (layer: MapLayer) => void
+}) {
+  return (
+    <div className="absolute top-3 right-3 z-[1000]" style={{ position: 'absolute', top: 12, right: 12, zIndex: 1000 }}>
+      <MapLayerControl activeLayerId={activeLayerId} onLayerChange={onLayerChange} />
+    </div>
+  )
+}
+
+const COURSE_DIRS = ['N','NE','E','SE','S','SW','W','NW']
+
 interface LiveMapProps {
   positions: LatestPosition[]
   geofences: Geofence[]
@@ -52,9 +58,9 @@ interface LiveMapProps {
   onSelectDevice: (pos: LatestPosition) => void
 }
 
-const COURSE_DIRS = ['N','NE','E','SE','S','SW','W','NW']
-
 export default function LiveMap({ positions, geofences, selectedDevice, onSelectDevice }: LiveMapProps) {
+  const [activeLayer, setActiveLayer] = useState<MapLayer>(DEFAULT_LAYERS[0])
+
   const flyTarget = selectedDevice
     ? positions.find(p => p.device_id === selectedDevice.id)
     : null
@@ -66,12 +72,17 @@ export default function LiveMap({ positions, geofences, selectedDevice, onSelect
       style={{ width: '100%', height: '100%' }}
       zoomControl={true}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      {/* Active tile/WMS layer */}
+      <ActiveTileLayer layer={activeLayer} />
 
-      {/* Fly to selected device */}
+      {/* Layer switcher — top right */}
+      <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 1000 }}>
+        <MapLayerControl
+          activeLayerId={activeLayer.id}
+          onLayerChange={setActiveLayer}
+        />
+      </div>
+
       <FlyToDevice position={flyTarget ? [flyTarget.lat, flyTarget.lng] : null} />
 
       {/* Geofence circles */}
