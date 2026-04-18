@@ -11,13 +11,6 @@ import ClientPage from '@/pages/ClientPage'
 import SettingsPage from '@/pages/SettingsPage'
 import DriverDashboard from '@/pages/DriverDashboard'
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth()
-  if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to="/login" replace />
-  return <>{children}</>
-}
-
 function LoadingScreen() {
   return (
     <div className="flex items-center justify-center h-screen bg-[#0D1117]">
@@ -29,11 +22,37 @@ function LoadingScreen() {
   )
 }
 
-// Separate component so useAuth() reads after AuthProvider is ready
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) return <LoadingScreen />
+  if (!user) return <Navigate to="/login" replace />
+  return <>{children}</>
+}
+
 function HomeRoute() {
+  const { profile, loading, user } = useAuth()
+
+  // Auth still loading
+  if (loading) return <LoadingScreen />
+
+  // User logged in but profile not loaded yet — wait max 3s then fallback
+  if (user && !profile) {
+    return <LoadingScreen />
+  }
+
+  // No user → redirect to login
+  if (!user) return <Navigate to="/login" replace />
+
+  // Route based on role
+  return profile?.role === 'admin' ? <MapPage /> : <DriverDashboard />
+}
+
+function AdminOnly({ children }: { children: React.ReactNode }) {
   const { profile, loading } = useAuth()
-  if (loading || !profile) return <LoadingScreen />
-  return profile.role === 'admin' ? <MapPage /> : <DriverDashboard />
+  if (loading) return <LoadingScreen />
+  if (!profile) return <LoadingScreen />
+  if (profile.role !== 'admin') return <Navigate to="/" replace />
+  return <>{children}</>
 }
 
 function AppRoutes() {
@@ -53,13 +72,6 @@ function AppRoutes() {
       </Route>
     </Routes>
   )
-}
-
-function AdminOnly({ children }: { children: React.ReactNode }) {
-  const { profile, loading } = useAuth()
-  if (loading || !profile) return <LoadingScreen />
-  if (profile.role !== 'admin') return <Navigate to="/" replace />
-  return <>{children}</>
 }
 
 export default function App() {

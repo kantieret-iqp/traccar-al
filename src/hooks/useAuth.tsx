@@ -22,27 +22,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    if (data) setProfile(data)
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (data) {
+        setProfile(data)
+      } else {
+        // Profile not found or RLS blocked — create a fallback driver profile
+        console.warn('Profile not found, using fallback:', error?.message)
+        setProfile({
+          id: userId,
+          full_name: null,
+          role: 'driver',
+          avatar_url: null,
+          created_at: new Date().toISOString(),
+        })
+      }
+    } catch (e) {
+      console.error('loadProfile error:', e)
+      // Always set a fallback so UI never gets stuck
+      setProfile({
+        id: userId,
+        full_name: null,
+        role: 'driver',
+        avatar_url: null,
+        created_at: new Date().toISOString(),
+      })
+    }
   }
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user) loadProfile(session.user.id)
-      setLoading(false)
+      if (session?.user) {
+        loadProfile(session.user.id).finally(() => setLoading(false))
+      } else {
+        setLoading(false)
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user) loadProfile(session.user.id)
-      else setProfile(null)
+      if (session?.user) {
+        loadProfile(session.user.id)
+      } else {
+        setProfile(null)
+        setLoading(false)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -63,13 +95,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut()
+    setProfile(null)
   }
 
   return (
     <AuthContext.Provider value={{
       user, session, profile, loading,
       signIn, signUp, signOut,
-      isAdmin: profile?.role === 'admin'
+      isAdmin: profile?.role === 'admin',
     }}>
       {children}
     </AuthContext.Provider>
