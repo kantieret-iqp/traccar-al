@@ -25,38 +25,43 @@ export function useDevices() {
     fetchDevices()
     fetchLatestPositions()
 
-    // Realtime: new positions
-    const posChannel = supabase
-      .channel('positions-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'positions' },
+    // Single channel - ALL listeners registered BEFORE .subscribe()
+    const channel = supabase
+      .channel('tracker-live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'positions' },
         async (payload) => {
           const pos = payload.new as LatestPosition
-          // Fetch device info to enrich
-          const { data: dev } = await supabase.from('devices').select('*').eq('id', pos.device_id).single()
+          const { data: dev } = await supabase
+            .from('devices').select('*').eq('id', pos.device_id).single()
           if (dev) {
             setLatestPositions(prev => {
               const next = new Map(prev)
-              next.set(pos.device_id, { ...pos, device_name: dev.name, device_icon: dev.icon, device_color: dev.color, device_plate: dev.plate, device_status: dev.status })
+              next.set(pos.device_id, {
+                ...pos,
+                device_name: dev.name,
+                device_icon: dev.icon,
+                device_color: dev.color,
+                device_plate: dev.plate,
+                device_status: dev.status,
+              })
               return next
             })
           }
         }
-      ).subscribe()
-
-    // Realtime: device status changes
-    const devChannel = supabase
-      .channel('devices-live')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'devices' },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'devices' },
         (payload) => {
           const updated = payload.new as Device
           setDevices(prev => prev.map(d => d.id === updated.id ? updated : d))
         }
-      ).subscribe()
+      )
+      .subscribe()
 
-    return () => {
-      supabase.removeChannel(posChannel)
-      supabase.removeChannel(devChannel)
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [fetchDevices, fetchLatestPositions])
 
   async function addDevice(data: Partial<Device>) {
