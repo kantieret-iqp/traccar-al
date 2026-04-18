@@ -13,10 +13,9 @@ export function useGeofences() {
 
   useEffect(() => { fetch() }, [fetch])
 
-  async function addGeofence(data: Partial<Geofence>) {
+  async function addGeofence(data: Partial<Geofence>): Promise<void> {
     const { error } = await supabase.from('geofences').insert(data)
     if (!error) fetch()
-    return { error }
   }
 
   async function toggleGeofence(id: string, active: boolean) {
