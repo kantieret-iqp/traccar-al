@@ -6,7 +6,7 @@ export function useEvents() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
+  const fetchEvents = useCallback(async () => {
     const { data } = await supabase
       .from('events')
       .select('*')
@@ -20,20 +20,12 @@ export function useEvents() {
   }, [])
 
   useEffect(() => {
-    fetch()
+    fetchEvents()
 
-    const channel = supabase
-      .channel('events-live')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'events' },
-        (payload) => {
-          const ev = payload.new as TrackEvent
-          setEvents(prev => [ev, ...prev.slice(0, 49)])
-          setUnreadCount(prev => prev + 1)
-        }
-      ).subscribe()
-
-    return () => { supabase.removeChannel(channel) }
-  }, [fetch])
+    // No realtime for events - just poll every 15s to avoid subscribe() error
+    const timer = setInterval(fetchEvents, 15000)
+    return () => clearInterval(timer)
+  }, [fetchEvents])
 
   async function markAllRead() {
     await supabase.from('events').update({ read: true }).eq('read', false)
@@ -41,5 +33,5 @@ export function useEvents() {
     setUnreadCount(0)
   }
 
-  return { events, unreadCount, loading, markAllRead, refetch: fetch }
+  return { events, unreadCount, loading, markAllRead, refetch: fetchEvents }
 }
