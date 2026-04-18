@@ -1,7 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase, Device, LatestPosition } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 
 export function useDevices() {
+  const { isAdmin, user } = useAuth()
   const [devices, setDevices] = useState<Device[]>([])
   const [latestPositions, setLatestPositions] = useState<Map<string, LatestPosition>>(new Map())
   const [loading, setLoading] = useState(true)
@@ -25,25 +27,19 @@ export function useDevices() {
     fetchDevices()
     fetchLatestPositions()
 
-    // Single channel - ALL listeners registered BEFORE .subscribe()
     const channel = supabase
       .channel('tracker-live')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'positions' },
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'positions' },
         async (payload) => {
           const pos = payload.new as LatestPosition
-          const { data: dev } = await supabase
-            .from('devices').select('*').eq('id', pos.device_id).single()
+          const { data: dev } = await supabase.from('devices').select('*').eq('id', pos.device_id).single()
           if (dev) {
             setLatestPositions(prev => {
               const next = new Map(prev)
               next.set(pos.device_id, {
                 ...pos,
-                device_name: dev.name,
-                device_icon: dev.icon,
-                device_color: dev.color,
-                device_plate: dev.plate,
+                device_name: dev.name, device_icon: dev.icon,
+                device_color: dev.color, device_plate: dev.plate,
                 device_status: dev.status,
               })
               return next
@@ -51,9 +47,7 @@ export function useDevices() {
           }
         }
       )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'devices' },
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'devices' },
         (payload) => {
           const updated = payload.new as Device
           setDevices(prev => prev.map(d => d.id === updated.id ? updated : d))

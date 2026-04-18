@@ -11,7 +11,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: { params: { eventsPerSecond: 10 } }
 })
 
-// ─── Types ────────────────────────────────────────────────────
 export interface Profile {
   id: string
   full_name: string | null
@@ -28,6 +27,7 @@ export interface Device {
   icon: string
   color: string
   owner_id: string | null
+  category: 'vehicle' | 'person' | 'animal' | 'asset'
   status: 'online' | 'idle' | 'offline'
   last_seen: string | null
   created_at: string

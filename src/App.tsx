@@ -9,6 +9,7 @@ import EventsPage from '@/pages/EventsPage'
 import HistoryPage from '@/pages/HistoryPage'
 import ClientPage from '@/pages/ClientPage'
 import SettingsPage from '@/pages/SettingsPage'
+import DriverDashboard from '@/pages/DriverDashboard'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -25,18 +26,21 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
       <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-        <Route index element={<MapPage />} />
+        {/* Admin sees full map; driver sees own dashboard */}
+        <Route index element={isAdmin ? <MapPage /> : <DriverDashboard />} />
         <Route path="devices" element={<DevicesPage />} />
-        <Route path="geofences" element={<GeofencesPage />} />
-        <Route path="events" element={<EventsPage />} />
-        <Route path="history" element={<HistoryPage />} />
         <Route path="client" element={<ClientPage />} />
+        <Route path="history" element={<HistoryPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        {/* Admin-only routes */}
+        {isAdmin && <Route path="geofences" element={<GeofencesPage />} />}
+        {isAdmin && <Route path="events" element={<EventsPage />} />}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
   )
