@@ -48,11 +48,11 @@ export default function Layout() {
       <style>{`
         .trackar-sidebar { display: flex; }
         .trackar-bottomnav { display: none; }
-        .trackar-main { padding-bottom: 0; }
+        .trackar-main { height: 100%; }
         @media (max-width: 767px) {
           .trackar-sidebar { display: none !important; }
           .trackar-bottomnav { display: flex !important; }
-          .trackar-main { padding-bottom: 56px; }
+          .trackar-main { height: calc(100vh - 56px) !important; padding-bottom: 0; }
         }
       `}</style>
 

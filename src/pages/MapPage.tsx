@@ -56,7 +56,7 @@ export default function MapPage() {
     const MAP_H      = `calc(100vh - ${panelOpen ? '44vh' : '56px'} - ${NAV_HEIGHT}px)`
 
     return (
-      <div style={{ position: 'relative', width: '100%', height: `calc(100vh - ${NAV_HEIGHT}px)`, overflow: 'hidden', background: '#0D1117' }}>
+      <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', background: '#0D1117' }}>
 
         {/* Device panel — top drawer */}
         <div style={{
