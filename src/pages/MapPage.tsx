@@ -46,13 +46,13 @@ export default function MapPage() {
       .map-sidebar { width: 288px; min-width: 288px; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.08); background: #0D1117; }
       .map-main { flex: 1; position: relative; }
       @media (max-width: 767px) {
-        .map-device-panel { flex-direction: column; }
-        .map-sidebar { width: 100%; min-width: unset; max-height: 42vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .map-main { flex: 1; min-height: 58vh; }
+        .map-device-panel { flex-direction: column; height: 100%; overflow: hidden; }
+        .map-sidebar { width: 100% !important; min-width: unset !important; height: 45vh !important; max-height: 45vh !important; overflow-y: auto; border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+        .map-main { flex: 1 !important; height: 55vh !important; min-height: 55vh !important; position: relative; overflow: hidden; }
         .map-float-panel { width: calc(100vw - 32px) !important; left: 16px !important; right: 16px !important; bottom: 8px !important; }
       }
     `}</style>
-    <div className="map-device-panel" style={{flexDirection:"row"}}>
+    <div className="map-device-panel">
       {/* Sidebar */}
       <div className="map-sidebar">
         {/* Header stats */}
