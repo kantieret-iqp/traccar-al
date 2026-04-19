@@ -1,10 +1,10 @@
-import { useState, Suspense, lazy } from 'react'
+import { useState, Suspense, lazy, useEffect, useRef } from 'react'
 import { useDevices } from '@/hooks/useDevices'
 import { useGeofences } from '@/hooks/useGeofences'
 import { useEvents } from '@/hooks/useEvents'
 import { Device, LatestPosition } from '@/lib/supabase'
 import { formatDistanceToNow } from 'date-fns'
-import { Signal, Battery, Navigation, ChevronRight, Wifi, WifiOff, Clock } from 'lucide-react'
+import { Battery, Clock, ChevronUp, ChevronDown } from 'lucide-react'
 
 const LiveMap = lazy(() => import('@/components/map/LiveMap'))
 
@@ -22,6 +22,16 @@ export default function MapPage() {
   const { events } = useEvents()
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
   const [search, setSearch] = useState('')
+  const [isMobile, setIsMobile] = useState(false)
+  const [panelOpen, setPanelOpen] = useState(true)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   const positions = Array.from(latestPositions.values())
   const filtered = devices.filter(d =>
@@ -30,127 +40,212 @@ export default function MapPage() {
   )
 
   const onlineCount = devices.filter(d => d.status === 'online').length
-  const idleCount = devices.filter(d => d.status === 'idle').length
+  const idleCount   = devices.filter(d => d.status === 'idle').length
+  const selPos = selectedDevice ? latestPositions.get(selectedDevice.id) : null
 
   function handleSelectOnMap(pos: LatestPosition) {
     const dev = devices.find(d => d.id === pos.device_id)
     if (dev) setSelectedDevice(dev)
   }
 
-  const selPos = selectedDevice ? latestPositions.get(selectedDevice.id) : null
+  // ── MOBILE layout ──────────────────────────────────────────
+  if (isMobile) {
+    const PANEL_H    = panelOpen ? '44vh' : '56px'
+    const MAP_TOP    = panelOpen ? '44vh' : '56px'
+    const NAV_HEIGHT = 56
+    const MAP_H      = `calc(100vh - ${panelOpen ? '44vh' : '56px'} - ${NAV_HEIGHT}px)`
 
+    return (
+      <div style={{ position: 'relative', width: '100%', height: `calc(100vh - ${NAV_HEIGHT}px)`, overflow: 'hidden', background: '#0D1117' }}>
+
+        {/* Device panel — top drawer */}
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0,
+          height: PANEL_H, zIndex: 10,
+          background: '#0D1117',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          overflow: 'hidden',
+          transition: 'height 0.3s ease',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Toggle bar */}
+          <button onClick={() => setPanelOpen(p => !p)} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            padding: '10px 16px', background: 'transparent', border: 'none',
+            borderBottom: '1px solid rgba(255,255,255,0.06)', cursor: 'pointer',
+            flexShrink: 0, width: '100%',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#00FF87', animation: 'blink 1.5s infinite' }} />
+              <span style={{ fontSize: 11, fontWeight: 700, color: '#E6EDF3', fontFamily: 'Syne, sans-serif' }}>
+                LIVE · {devices.length} pajisje
+              </span>
+              <span style={{ fontSize: 10, color: '#00FF87', fontFamily: 'monospace' }}>{onlineCount} online</span>
+            </div>
+            {panelOpen ? <ChevronUp size={16} color="#7D8590" /> : <ChevronDown size={16} color="#7D8590" />}
+          </button>
+
+          {/* Device list */}
+          {panelOpen && (
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+              {/* Search */}
+              <input value={search} onChange={e => setSearch(e.target.value)}
+                placeholder="🔍 Kërko pajisje..."
+                style={{ width: '100%', background: '#161B22', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 12px', fontSize: 12, color: '#E6EDF3', fontFamily: 'monospace', outline: 'none', marginBottom: 8, boxSizing: 'border-box' }}
+              />
+              {filtered.map(dev => {
+                const pos = latestPositions.get(dev.id)
+                const isSelected = selectedDevice?.id === dev.id
+                return (
+                  <div key={dev.id} onClick={() => setSelectedDevice(isSelected ? null : dev)}
+                    style={{
+                      padding: '10px 12px', borderRadius: 10, marginBottom: 6,
+                      background: isSelected ? 'rgba(0,255,135,0.08)' : '#161B22',
+                      border: isSelected ? '1px solid rgba(0,255,135,0.25)' : '1px solid rgba(255,255,255,0.05)',
+                      cursor: 'pointer',
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 18 }}>{dev.icon}</span>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: '#E6EDF3' }}>{dev.name}</div>
+                          <div style={{ fontSize: 10, color: '#7D8590', fontFamily: 'monospace' }}>{dev.plate ?? '—'}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <div style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[dev.status] }} />
+                        <span style={{ fontSize: 10, color: STATUS_COLOR[dev.status], fontFamily: 'monospace' }}>{STATUS_LABEL[dev.status]}</span>
+                      </div>
+                    </div>
+                    {pos && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginTop: 8 }}>
+                        {[
+                          { label: 'km/h', val: Math.round(pos.speed), color: dev.status === 'online' ? '#00FF87' : '#7D8590' },
+                          { label: 'Kurs', val: COURSE_DIRS[Math.round(pos.course/45)%8], color: '#E6EDF3' },
+                          { label: 'Bat', val: pos.battery != null ? `${pos.battery}%` : '—', color: pos.battery && pos.battery < 20 ? '#FF4444' : '#7D8590' },
+                        ].map(s => (
+                          <div key={s.label} style={{ background: '#0D1117', borderRadius: 6, padding: '5px 8px' }}>
+                            <div style={{ fontSize: 8, color: '#7D8590', fontFamily: 'monospace' }}>{s.label}</div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: s.color, fontFamily: 'monospace' }}>{s.val}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* MAP — fills remaining space */}
+        <div style={{
+          position: 'absolute',
+          top: MAP_TOP,
+          left: 0, right: 0,
+          bottom: 0,
+          transition: 'top 0.3s ease',
+          overflow: 'hidden',
+        }}>
+          <Suspense fallback={
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#0D1117' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ width: 32, height: 32, border: '2px solid #00FF87', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 12px' }} />
+                <p style={{ color: '#7D8590', fontSize: 13, fontFamily: 'monospace' }}>Duke ngarkuar hartën...</p>
+              </div>
+            </div>
+          }>
+            <LiveMap
+              positions={positions}
+              geofences={geofences}
+              selectedDevice={selectedDevice}
+              onSelectDevice={handleSelectOnMap}
+            />
+          </Suspense>
+        </div>
+      </div>
+    )
+  }
+
+  // ── DESKTOP layout ─────────────────────────────────────────
   return (
-    <>
-    <style>{`
-      .map-wrap { display: flex; flex-direction: column; width: 100%; height: 100vh; overflow: hidden; background: #0D1117; }
-      .map-sidebar { width: 288px; flex-shrink: 0; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.08); background: #0D1117; overflow-y: auto; }
-      .map-row { display: flex; flex-direction: row; flex: 1; overflow: hidden; }
-      .map-main { flex: 1; position: relative; overflow: hidden; }
-      .map-float-panel { position: absolute; bottom: 16px; left: 16px; width: 288px; }
-      @media (max-width: 767px) {
-        .map-wrap { height: calc(100vh - 56px); }
-        .map-row { flex-direction: column; }
-        .map-sidebar { width: 100% !important; height: 40vh; max-height: 40vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
-        .map-main { height: 60vh !important; flex: unset; }
-        .map-float-panel { width: calc(100% - 24px); left: 12px; bottom: 8px; }
-      }
-    `}</style>
-    <div className="map-wrap"><div className="map-row">
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
       {/* Sidebar */}
-      <div className="map-sidebar">
-        {/* Header stats */}
-        <div className="p-3 border-b border-white/[0.08]">
-          <div className="flex items-center gap-1.5 mb-3">
-            <div className="w-2 h-2 rounded-full bg-[#00FF87] blink" />
-            <span className="text-xs font-mono text-[#7D8590]">LIVE TRACKING</span>
-            <span className="ml-auto text-[10px] font-mono text-[#7D8590]">{devices.length} pajisje</span>
+      <div style={{ width: 288, minWidth: 288, display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(255,255,255,0.08)', background: '#0D1117', overflow: 'hidden' }}>
+        {/* Stats */}
+        <div style={{ padding: '12px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#00FF87' }} className="blink" />
+            <span style={{ fontSize: 10, fontFamily: 'monospace', color: '#7D8590' }}>LIVE TRACKING</span>
+            <span style={{ marginLeft: 'auto', fontSize: 10, fontFamily: 'monospace', color: '#7D8590' }}>{devices.length} pajisje</span>
           </div>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
             {[
               { label: 'Online', val: onlineCount, color: '#00FF87' },
               { label: 'Ndalet', val: idleCount, color: '#FFB800' },
               { label: 'Offline', val: devices.length - onlineCount - idleCount, color: '#7D8590' },
             ].map(s => (
-              <div key={s.label} className="bg-[#161B22] rounded-lg p-2 text-center border border-white/[0.05]">
-                <div className="text-lg font-bold" style={{ color: s.color }}>{s.val}</div>
-                <div className="text-[9px] font-mono text-[#7D8590]">{s.label}</div>
+              <div key={s.label} style={{ background: '#161B22', borderRadius: 8, padding: '8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.05)' }}>
+                <div style={{ fontSize: 18, fontWeight: 700, color: s.color }}>{s.val}</div>
+                <div style={{ fontSize: 9, fontFamily: 'monospace', color: '#7D8590' }}>{s.label}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Search */}
-        <div className="p-3 border-b border-white/[0.08]">
-          <input
-            value={search} onChange={e => setSearch(e.target.value)}
+        <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="🔍 Kërko pajisje..."
-            className="w-full bg-[#161B22] border border-white/[0.08] rounded-lg px-3 py-2 text-xs font-mono text-[#E6EDF3] outline-none focus:border-[rgba(0,255,135,0.3)] transition-colors placeholder-[#7D8590]"
+            style={{ width: '100%', background: '#161B22', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '8px 12px', fontSize: 12, color: '#E6EDF3', fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' }}
           />
         </div>
 
         {/* Device list */}
-        <div className="flex-1 overflow-y-auto">
-          {loading && (
-            <div className="flex items-center justify-center p-8">
-              <div className="w-5 h-5 border-2 border-[#00FF87] border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          {loading && <div style={{ display: 'flex', justifyContent: 'center', padding: 32 }}><div style={{ width: 20, height: 20, border: '2px solid #00FF87', borderTopColor: 'transparent', borderRadius: '50%' }} /></div>}
           {filtered.map(dev => {
             const pos = latestPositions.get(dev.id)
             const isSelected = selectedDevice?.id === dev.id
-            const color = STATUS_COLOR[dev.status]
-            const courseDir = pos ? COURSE_DIRS[Math.round(pos.course / 45) % 8] : '—'
-
             return (
-              <div
-                key={dev.id}
-                onClick={() => setSelectedDevice(isSelected ? null : dev)}
-                className={`relative px-3 py-3 border-b border-white/[0.04] cursor-pointer transition-all ${
-                  isSelected ? 'bg-[rgba(0,255,135,0.06)]' : 'hover:bg-white/[0.02]'
-                }`}
-              >
-                {isSelected && <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-[#00FF87]" />}
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base">{dev.icon}</span>
+              <div key={dev.id} onClick={() => setSelectedDevice(isSelected ? null : dev)}
+                style={{
+                  padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.04)',
+                  cursor: 'pointer', position: 'relative',
+                  background: isSelected ? 'rgba(0,255,135,0.06)' : 'transparent',
+                  borderLeft: isSelected ? '2px solid #00FF87' : '2px solid transparent',
+                }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16 }}>{dev.icon}</span>
                     <div>
-                      <div className="text-xs font-semibold text-[#E6EDF3]">{dev.name}</div>
-                      <div className="text-[10px] font-mono text-[#7D8590]">{dev.plate ?? '—'}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: '#E6EDF3' }}>{dev.name}</div>
+                      <div style={{ fontSize: 10, color: '#7D8590', fontFamily: 'monospace' }}>{dev.plate ?? '—'}</div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
-                    <span className="text-[9px] font-mono" style={{ color }}>{STATUS_LABEL[dev.status]}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[dev.status] }} />
+                    <span style={{ fontSize: 9, color: STATUS_COLOR[dev.status], fontFamily: 'monospace' }}>{STATUS_LABEL[dev.status]}</span>
                   </div>
                 </div>
-
-                {pos ? (
-                  <div className="grid grid-cols-3 gap-1">
-                    <div className="bg-[#161B22] rounded px-2 py-1">
-                      <div className="text-[8px] font-mono text-[#7D8590]">km/h</div>
-                      <div className="text-xs font-bold" style={{ color: dev.status === 'online' ? '#00FF87' : '#7D8590' }}>
-                        {Math.round(pos.speed)}
+                {pos && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4 }}>
+                    {[
+                      { label: 'km/h', val: Math.round(pos.speed), color: '#00FF87' },
+                      { label: 'Kurs', val: COURSE_DIRS[Math.round(pos.course/45)%8], color: '#E6EDF3' },
+                      { label: 'Bat', val: pos.battery != null ? `${pos.battery}%` : '—', color: '#7D8590' },
+                    ].map(s => (
+                      <div key={s.label} style={{ background: '#161B22', borderRadius: 6, padding: '4px 8px' }}>
+                        <div style={{ fontSize: 8, color: '#7D8590', fontFamily: 'monospace' }}>{s.label}</div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: s.color, fontFamily: 'monospace' }}>{s.val}</div>
                       </div>
-                    </div>
-                    <div className="bg-[#161B22] rounded px-2 py-1">
-                      <div className="text-[8px] font-mono text-[#7D8590]">Kurs</div>
-                      <div className="text-xs font-bold text-[#E6EDF3]">{courseDir}</div>
-                    </div>
-                    <div className="bg-[#161B22] rounded px-2 py-1">
-                      <div className="text-[8px] font-mono text-[#7D8590]">Bat</div>
-                      <div className="text-xs font-bold" style={{ color: pos.battery && pos.battery < 20 ? '#FF4444' : '#7D8590' }}>
-                        {pos.battery != null ? `${pos.battery}%` : '—'}
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ) : (
-                  <div className="text-[10px] font-mono text-[#7D8590]">Pa pozicion</div>
                 )}
-
                 {dev.last_seen && (
-                  <div className="flex items-center gap-1 mt-1.5">
-                    <Clock size={9} className="text-[#7D8590]" />
-                    <span className="text-[9px] font-mono text-[#7D8590]">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                    <Clock size={9} color="#7D8590" />
+                    <span style={{ fontSize: 9, color: '#7D8590', fontFamily: 'monospace' }}>
                       {formatDistanceToNow(new Date(dev.last_seen), { addSuffix: true })}
                     </span>
                   </div>
@@ -160,34 +255,27 @@ export default function MapPage() {
           })}
         </div>
 
-        {/* Recent events */}
-        <div className="border-t border-white/[0.08] p-3">
-          <div className="text-[9px] font-mono text-[#7D8590] mb-2 uppercase tracking-wider">Ngjarjet e fundit</div>
-          <div className="flex flex-col gap-1.5 max-h-28 overflow-y-auto">
+        {/* Events */}
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '10px 12px' }}>
+          <div style={{ fontSize: 9, fontFamily: 'monospace', color: '#7D8590', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Ngjarjet e fundit</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 100, overflowY: 'auto' }}>
             {events.slice(0, 5).map(ev => (
-              <div key={ev.id} className="flex items-start gap-2 text-[10px] font-mono">
-                <div className={`w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0 ${
-                  ev.type === 'geofence_enter' || ev.type === 'geofence_exit' ? 'bg-[#FFB800]' :
-                  ev.type === 'overspeed' ? 'bg-[#FF4444]' :
-                  ev.type === 'online' ? 'bg-[#00FF87]' : 'bg-[#7D8590]'
-                }`} />
-                <span className="text-[#7D8590] flex-shrink-0">{new Date(ev.created_at).toLocaleTimeString('sq', { hour: '2-digit', minute: '2-digit' })}</span>
-                <span className="text-[#E6EDF3] truncate">{ev.message}</span>
+              <div key={ev.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 10, fontFamily: 'monospace' }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', marginTop: 3, flexShrink: 0, background: ev.type === 'overspeed' ? '#FF4444' : ev.type === 'online' ? '#00FF87' : '#FFB800' }} />
+                <span style={{ color: '#7D8590', flexShrink: 0 }}>{new Date(ev.created_at).toLocaleTimeString('sq', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span style={{ color: '#E6EDF3' }}>{ev.message}</span>
               </div>
             ))}
-            {events.length === 0 && <div className="text-[10px] font-mono text-[#7D8590]">Pa ngjarje</div>}
+            {events.length === 0 && <div style={{ fontSize: 10, color: '#7D8590', fontFamily: 'monospace' }}>Pa ngjarje</div>}
           </div>
         </div>
       </div>
 
       {/* Map */}
-      <div className="map-main">
+      <div style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
         <Suspense fallback={
-          <div className="flex items-center justify-center h-full bg-[#0D1117]">
-            <div className="text-center">
-              <div className="w-8 h-8 border-2 border-[#00FF87] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-[#7D8590] text-sm font-mono">Duke ngarkuar hartën...</p>
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', background: '#0D1117' }}>
+            <div style={{ width: 32, height: 32, border: '2px solid #00FF87', borderTopColor: 'transparent', borderRadius: '50%' }} />
           </div>
         }>
           <LiveMap
@@ -198,49 +286,47 @@ export default function MapPage() {
           />
         </Suspense>
 
-        {/* Selected device floating panel */}
+        {/* Selected device panel */}
         {selectedDevice && selPos && (
-          <div className="map-float-panel bg-[rgba(13,17,23,0.97)] border border-white/[0.08] rounded-xl p-4 backdrop-blur-md z-[1000] slide-right">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: `${selectedDevice.color}15`, border: `1px solid ${selectedDevice.color}30` }}>
+          <div style={{
+            position: 'absolute', bottom: 16, left: 16, width: 280,
+            background: 'rgba(13,17,23,0.97)', border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12, padding: 16, backdropFilter: 'blur(10px)', zIndex: 1000,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, background: `${selectedDevice.color}15`, border: `1px solid ${selectedDevice.color}30` }}>
                 {selectedDevice.icon}
               </div>
-              <div className="flex-1">
-                <div className="font-bold text-sm text-[#E6EDF3]">{selectedDevice.name}</div>
-                <div className="text-[10px] font-mono text-[#7D8590]">{selectedDevice.plate}</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#E6EDF3' }}>{selectedDevice.name}</div>
+                <div style={{ fontSize: 10, color: '#7D8590', fontFamily: 'monospace' }}>{selectedDevice.plate}</div>
               </div>
-              <div className="w-2 h-2 rounded-full blink" style={{ background: STATUS_COLOR[selectedDevice.status] }} />
             </div>
-            <div className="grid grid-cols-2 gap-2 mb-3">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {[
                 { label: 'Shpejtësia', val: `${Math.round(selPos.speed)} km/h`, color: '#00FF87' },
                 { label: 'Drejtimi', val: COURSE_DIRS[Math.round(selPos.course/45)%8], color: '#E6EDF3' },
                 { label: 'Lartësia', val: `${Math.round(selPos.altitude)} m`, color: '#7D8590' },
                 { label: 'Saktësia', val: `±${Math.round(selPos.accuracy)} m`, color: '#7D8590' },
               ].map(s => (
-                <div key={s.label} className="bg-[#161B22] rounded-lg p-2 border border-white/[0.05]">
-                  <div className="text-[9px] font-mono text-[#7D8590] mb-1">{s.label.toUpperCase()}</div>
-                  <div className="text-sm font-bold font-mono" style={{ color: s.color }}>{s.val}</div>
+                <div key={s.label} style={{ background: '#161B22', borderRadius: 8, padding: '8px 10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ fontSize: 8, color: '#7D8590', fontFamily: 'monospace', textTransform: 'uppercase', marginBottom: 2 }}>{s.label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: s.color, fontFamily: 'monospace' }}>{s.val}</div>
                 </div>
               ))}
             </div>
-            <div className="text-[10px] font-mono text-[#7D8590]">
-              {selPos.lat.toFixed(5)}° N, {selPos.lng.toFixed(5)}° E
-            </div>
             {selPos.battery != null && (
-              <div className="flex items-center gap-2 mt-2">
-                <Battery size={12} className={selPos.battery < 20 ? 'text-[#FF4444]' : 'text-[#7D8590]'} />
-                <div className="flex-1 h-1.5 bg-[#161B22] rounded-full overflow-hidden">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${selPos.battery}%`, background: selPos.battery < 20 ? '#FF4444' : '#00FF87' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                <Battery size={13} color={selPos.battery < 20 ? '#FF4444' : '#7D8590'} />
+                <div style={{ flex: 1, height: 4, background: '#161B22', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${selPos.battery}%`, background: selPos.battery < 20 ? '#FF4444' : '#00FF87', borderRadius: 2 }} />
                 </div>
-                <span className="text-[10px] font-mono" style={{ color: selPos.battery < 20 ? '#FF4444' : '#7D8590' }}>{selPos.battery}%</span>
+                <span style={{ fontSize: 11, fontFamily: 'monospace', color: selPos.battery < 20 ? '#FF4444' : '#7D8590' }}>{selPos.battery}%</span>
               </div>
             )}
           </div>
         )}
       </div>
     </div>
-    </div>
-    </>
   )
 }
