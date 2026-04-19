@@ -40,9 +40,21 @@ export default function MapPage() {
   const selPos = selectedDevice ? latestPositions.get(selectedDevice.id) : null
 
   return (
-    <div className="flex h-full">
+    <>
+    <style>{`
+      .map-device-panel { display: flex; flex-direction: row; height: 100%; }
+      .map-sidebar { width: 288px; min-width: 288px; display: flex; flex-direction: column; border-right: 1px solid rgba(255,255,255,0.08); background: #0D1117; }
+      .map-main { flex: 1; position: relative; }
+      @media (max-width: 767px) {
+        .map-device-panel { flex-direction: column; }
+        .map-sidebar { width: 100%; min-width: unset; max-height: 42vh; border-right: none; border-bottom: 1px solid rgba(255,255,255,0.08); }
+        .map-main { flex: 1; min-height: 58vh; }
+        .map-float-panel { width: calc(100vw - 32px) !important; left: 16px !important; right: 16px !important; bottom: 8px !important; }
+      }
+    `}</style>
+    <div className="map-device-panel" style={{flexDirection:"row"}}>
       {/* Sidebar */}
-      <div className="w-72 flex flex-col border-r border-white/[0.08] bg-[#0D1117]">
+      <div className="map-sidebar">
         {/* Header stats */}
         <div className="p-3 border-b border-white/[0.08]">
           <div className="flex items-center gap-1.5 mb-3">
@@ -166,7 +178,7 @@ export default function MapPage() {
       </div>
 
       {/* Map */}
-      <div className="flex-1 relative">
+      <div className="map-main">
         <Suspense fallback={
           <div className="flex items-center justify-center h-full bg-[#0D1117]">
             <div className="text-center">
@@ -185,7 +197,7 @@ export default function MapPage() {
 
         {/* Selected device floating panel */}
         {selectedDevice && selPos && (
-          <div className="absolute bottom-4 left-4 w-72 bg-[rgba(13,17,23,0.97)] border border-white/[0.08] rounded-xl p-4 backdrop-blur-md z-[1000] slide-right">
+          <div className="map-float-panel absolute bottom-4 left-4 w-72 bg-[rgba(13,17,23,0.97)] border border-white/[0.08] rounded-xl p-4 backdrop-blur-md z-[1000] slide-right">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style={{ background: `${selectedDevice.color}15`, border: `1px solid ${selectedDevice.color}30` }}>
                 {selectedDevice.icon}
@@ -225,5 +237,6 @@ export default function MapPage() {
         )}
       </div>
     </div>
+    </>
   )
 }
