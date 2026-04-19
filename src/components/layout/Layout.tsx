@@ -52,7 +52,6 @@ export default function Layout() {
         @media (max-width: 767px) {
           .trackar-sidebar { display: none !important; }
           .trackar-bottomnav { display: flex !important; }
-          .trackar-main { height: calc(100vh - 56px) !important; padding-bottom: 0; }
         }
       `}</style>
 
