@@ -25,72 +25,100 @@ export default function Layout() {
   ]
 
   const navItems = isAdmin ? adminNav : driverNav
-  // Mobile shows max 5 items
-  const mobileItems = [...navItems.slice(0, 4), { to: '/settings', icon: Settings, label: 'Config' }]
+  const mobileItems = [...navItems.slice(0, 4), { to: '/settings', icon: Settings, label: 'Config', exact: false }]
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0D1117]">
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#0D1117', position: 'relative' }}>
 
-      {/* ── Desktop Sidebar ── */}
-      <aside className="desktop-sidebar w-16 flex flex-col items-center py-4 gap-1 border-r border-white/[0.08] bg-[#0D1117] z-50 flex-shrink-0">
+      {/* ── Desktop Sidebar (fshihet në mobile) ── */}
+      <aside style={{
+        width: 64,
+        minWidth: 64,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        paddingTop: 16,
+        paddingBottom: 16,
+        gap: 4,
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        background: '#0D1117',
+        zIndex: 50,
+        flexShrink: 0,
+      }}
+      className="hidden md:flex"
+      >
         {/* Logo */}
-        <div className="mb-3">
-          <div className="w-8 h-8 rounded-lg bg-[rgba(0,255,135,0.12)] border border-[rgba(0,255,135,0.2)] flex items-center justify-center">
-            <Navigation size={14} className="text-[#00FF87]" />
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(0,255,135,0.12)', border: '1px solid rgba(0,255,135,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Navigation size={14} color="#00FF87" />
           </div>
         </div>
 
         {/* Role badge */}
-        <div className={`text-[7px] font-mono font-bold px-1.5 py-0.5 rounded mb-2 ${
-          isAdmin
-            ? 'bg-[rgba(0,255,135,0.1)] text-[#00FF87] border border-[rgba(0,255,135,0.2)]'
-            : 'bg-[rgba(77,166,255,0.1)] text-[#4DA6FF] border border-[rgba(77,166,255,0.2)]'
-        }`}>
+        <div style={{
+          fontSize: 7, fontFamily: 'JetBrains Mono, monospace', fontWeight: 700,
+          padding: '2px 6px', borderRadius: 4, marginBottom: 8,
+          background: isAdmin ? 'rgba(0,255,135,0.1)' : 'rgba(77,166,255,0.1)',
+          color: isAdmin ? '#00FF87' : '#4DA6FF',
+          border: isAdmin ? '1px solid rgba(0,255,135,0.2)' : '1px solid rgba(77,166,255,0.2)',
+        }}>
           {isAdmin ? 'ADMIN' : 'DRIVER'}
         </div>
 
-        {/* Nav */}
-        <nav className="flex flex-col gap-1 flex-1 w-full px-2">
+        {/* Nav links */}
+        <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, width: '100%', padding: '0 8px' }}>
           {navItems.map(({ to, icon: Icon, label, exact, badge }: any) => {
             const active = exact ? location.pathname === to : location.pathname.startsWith(to)
             return (
-              <NavLink key={to} to={to}
-                className={`relative flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-all group ${
-                  active ? 'bg-[rgba(0,255,135,0.12)] text-[#00FF87]' : 'text-[#7D8590] hover:text-[#E6EDF3] hover:bg-white/[0.04]'
-                }`}>
-                {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-[#00FF87] rounded-r-full" />}
-                <div className="relative">
+              <NavLink key={to} to={to} style={{
+                position: 'relative', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', gap: 4, padding: '8px 4px', borderRadius: 8,
+                textDecoration: 'none', transition: 'all 0.15s',
+                background: active ? 'rgba(0,255,135,0.12)' : 'transparent',
+                color: active ? '#00FF87' : '#7D8590',
+              }}>
+                {active && <div style={{ position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)', width: 2, height: 20, background: '#00FF87', borderRadius: '0 2px 2px 0' }} />}
+                <div style={{ position: 'relative' }}>
                   <Icon size={16} />
                   {badge > 0 && (
-                    <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-[#FF4444] rounded-full text-[8px] font-mono font-bold flex items-center justify-center text-white">
+                    <span style={{ position: 'absolute', top: -4, right: -4, width: 14, height: 14, background: '#FF4444', borderRadius: '50%', fontSize: 8, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: 'monospace' }}>
                       {badge > 9 ? '9+' : badge}
                     </span>
                   )}
                 </div>
-                <span className="text-[9px] font-display font-semibold leading-none tracking-tight">{label}</span>
-                <div className="absolute left-full ml-2 px-2 py-1 bg-[#161B22] border border-white/[0.08] rounded-md text-[11px] font-display whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                  {label}
-                </div>
+                <span style={{ fontSize: 9, fontWeight: 600, letterSpacing: 0.3, lineHeight: 1 }}>{label}</span>
               </NavLink>
             )
           })}
         </nav>
 
-        {/* Bottom */}
-        <div className="flex flex-col gap-1 w-full px-2">
-          <NavLink to="/settings" className={({ isActive }) =>
-            `flex flex-col items-center gap-1 py-2 px-1 rounded-lg transition-all ${isActive ? 'bg-[rgba(0,255,135,0.12)] text-[#00FF87]' : 'text-[#7D8590] hover:text-[#E6EDF3] hover:bg-white/[0.04]'}`
-          }>
+        {/* Bottom: Settings + Logout + Avatar */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: '100%', padding: '0 8px' }}>
+          <NavLink to="/settings" style={({ isActive }) => ({
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            padding: '8px 4px', borderRadius: 8, textDecoration: 'none', transition: 'all 0.15s',
+            background: isActive ? 'rgba(0,255,135,0.12)' : 'transparent',
+            color: isActive ? '#00FF87' : '#7D8590',
+          })}>
             <Settings size={16} />
-            <span className="text-[9px] font-display font-semibold">Config</span>
+            <span style={{ fontSize: 9, fontWeight: 600 }}>Config</span>
           </NavLink>
-          <button onClick={signOut}
-            className="flex flex-col items-center gap-1 py-2 px-1 rounded-lg text-[#7D8590] hover:text-[#FF4444] hover:bg-[rgba(255,68,68,0.08)] transition-all w-full">
+
+          <button onClick={signOut} style={{
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+            padding: '8px 4px', borderRadius: 8, background: 'transparent', border: 'none',
+            color: '#7D8590', cursor: 'pointer', width: '100%', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#FF4444'; (e.currentTarget as HTMLElement).style.background = 'rgba(255,68,68,0.08)' }}
+          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = '#7D8590'; (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+          >
             <LogOut size={16} />
-            <span className="text-[9px] font-display font-semibold">Dil</span>
+            <span style={{ fontSize: 9, fontWeight: 600 }}>Dil</span>
           </button>
-          <div className="mt-2 w-8 h-8 rounded-full bg-[rgba(0,255,135,0.12)] border border-[rgba(0,255,135,0.2)] flex items-center justify-center mx-auto" title={profile?.full_name ?? 'User'}>
-            <span className="text-[10px] font-bold text-[#00FF87]">
+
+          {/* Avatar */}
+          <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(0,255,135,0.12)', border: '1px solid rgba(0,255,135,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '8px auto 0' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: '#00FF87' }}>
               {profile?.full_name?.charAt(0).toUpperCase() ?? 'U'}
             </span>
           </div>
@@ -98,20 +126,36 @@ export default function Layout() {
       </aside>
 
       {/* ── Main content ── */}
-      <main className="flex-1 overflow-hidden app-content">
+      <main style={{ flex: 1, overflow: 'hidden', paddingBottom: 'env(safe-area-inset-bottom)' }} className="md:pb-0 pb-14">
         <Outlet />
       </main>
 
-      {/* ── Mobile Bottom Nav ── */}
-      <nav className="mobile-nav">
+      {/* ── Mobile Bottom Nav (shfaqet vetëm në mobile) ── */}
+      <nav className="md:hidden" style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        height: 56, background: 'rgba(13,17,23,0.97)',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        display: 'flex', alignItems: 'stretch',
+        zIndex: 200, backdropFilter: 'blur(12px)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}>
         {mobileItems.map(({ to, icon: Icon, label, exact, badge }: any) => {
           const active = exact ? location.pathname === to : location.pathname.startsWith(to)
           return (
-            <NavLink key={to} to={to} className={active ? 'active' : ''}>
-              <div className="relative">
+            <NavLink key={to} to={to} style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', gap: 3, textDecoration: 'none',
+              color: active ? '#00FF87' : '#7D8590',
+              fontSize: 9, fontWeight: 600, fontFamily: 'Syne, sans-serif',
+              position: 'relative', transition: 'color 0.15s',
+            }}>
+              {active && (
+                <div style={{ position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)', width: 24, height: 2, background: '#00FF87', borderRadius: '0 0 2px 2px' }} />
+              )}
+              <div style={{ position: 'relative' }}>
                 <Icon size={20} />
                 {badge > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#FF4444] rounded-full text-[9px] font-mono font-bold flex items-center justify-center text-white">
+                  <span style={{ position: 'absolute', top: -4, right: -4, width: 14, height: 14, background: '#FF4444', borderRadius: '50%', fontSize: 8, color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'monospace' }}>
                     {badge > 9 ? '9+' : badge}
                   </span>
                 )}
@@ -120,6 +164,17 @@ export default function Layout() {
             </NavLink>
           )
         })}
+
+        {/* Logout button në mobile nav */}
+        <button onClick={signOut} style={{
+          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+          justifyContent: 'center', gap: 3, background: 'transparent', border: 'none',
+          color: '#7D8590', fontSize: 9, fontWeight: 600, fontFamily: 'Syne, sans-serif',
+          cursor: 'pointer',
+        }}>
+          <LogOut size={20} />
+          <span>Dil</span>
+        </button>
       </nav>
 
     </div>
