@@ -116,7 +116,7 @@ export default function Layout() {
         </aside>
 
         {/* ── Main ── */}
-        <main className="trackar-main" style={{ flex: 1, overflow: 'hidden', minWidth: 0 }}>
+        <main className="trackar-main" style={{ flex: 1, overflow: 'hidden', minWidth: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
           <Outlet />
         </main>
       </div>
