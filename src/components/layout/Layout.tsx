@@ -25,7 +25,7 @@ export default function Layout() {
   ]
 
   const navItems = isAdmin ? adminNav : driverNav
-  const mobileItems = navItems.slice(0, 4)
+  const mobileItems = navItems
 
   const sidebarStyle: React.CSSProperties = {
     width: 64, minWidth: 64, display: 'flex', flexDirection: 'column',
@@ -128,12 +128,14 @@ export default function Layout() {
         zIndex: 200, backdropFilter: 'blur(12px)',
         paddingBottom: 'env(safe-area-inset-bottom)',
         alignItems: 'stretch',
+        overflowX: 'auto',
+        overflowY: 'hidden',
       }}>
         {mobileItems.map(({ to, icon: Icon, label, exact, badge }: any) => {
           const active = exact ? location.pathname === to : location.pathname.startsWith(to)
           return (
             <NavLink key={to} to={to} style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              flex: '1 0 56px', minWidth: 56, display: 'flex', flexDirection: 'column', alignItems: 'center',
               justifyContent: 'center', gap: 3, textDecoration: 'none',
               color: active ? '#00FF87' : '#7D8590',
               fontSize: 9, fontWeight: 600, fontFamily: 'Syne, sans-serif',
@@ -155,7 +157,7 @@ export default function Layout() {
 
         {/* Settings */}
         <NavLink to="/settings" style={{
-          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+          flex: '1 0 56px', minWidth: 56, display: 'flex', flexDirection: 'column', alignItems: 'center',
           justifyContent: 'center', gap: 3, textDecoration: 'none',
           color: location.pathname === '/settings' ? '#00FF87' : '#7D8590',
           fontSize: 9, fontWeight: 600, fontFamily: 'Syne, sans-serif', position: 'relative',
@@ -166,7 +168,7 @@ export default function Layout() {
 
         {/* Logout */}
         <button onClick={signOut} style={{
-          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+          flex: '1 0 56px', minWidth: 56, display: 'flex', flexDirection: 'column', alignItems: 'center',
           justifyContent: 'center', gap: 3, background: 'transparent', border: 'none',
           color: '#7D8590', fontSize: 9, fontWeight: 600, fontFamily: 'Syne, sans-serif',
           cursor: 'pointer',
